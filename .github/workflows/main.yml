@@ -1,51 +1,53 @@
-name: Build Lavat Windows and Alpine Linux binaries
+name: Build lavat binaries
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
   pull_request:
 
 jobs:
+  build-linux-alpine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Alpine build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y alpine-sdk
+
+      - name: Build lavat for Alpine
+        run: |
+          mkdir lavat-alpine
+          cp lavat.c lavat-alpine/
+          cd lavat-alpine
+          gcc -static -o lavat lavat.c
+
+      - name: Upload Linux Alpine binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: lavat-linux-alpine
+          path: lavat-alpine/lavat
+
   build-windows:
     runs-on: windows-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install MinGW
-        run: choco install mingw
+        run: choco install mingw --no-progress
 
-      - name: Add MinGW to PATH
-        shell: powershell
-        run: echo "::add-path::C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin"
-
-      - name: Build Windows EXE with gcc
+      - name: Add MinGW to PATH (correct way)
         run: |
-          gcc -o lavat.exe lavat.c   # Adjust source files list if more than one
+          echo "C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin" >> $env:GITHUB_PATH
+        shell: pwsh
 
-      - name: Upload Windows EXE artifact
+      - name: Build lavat.exe
+        run: gcc -o lavat.exe lavat.c
+
+      - name: Upload Windows binary
         uses: actions/upload-artifact@v4
         with:
           name: lavat-windows-exe
           path: lavat.exe
-
-  build-alpine:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Install Alpine toolchain and dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y musl-tools build-essential gcc make pkg-config
-
-      - name: Build static binary for Alpine
-        run: |
-          musl-gcc -static -o lavat lavat.c  # Adjust source files if needed
-
-      - name: Upload Alpine binary artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: lavat-alpine-binary
-          path: lavat
