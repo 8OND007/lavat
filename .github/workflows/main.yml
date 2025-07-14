@@ -2,52 +2,53 @@ name: Build lavat binaries
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
 
 jobs:
   build-linux-alpine:
     runs-on: ubuntu-latest
+    container: alpine:latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Alpine build environment
+      - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y alpine-sdk
+          apk add --no-cache build-base linux-headers
 
-      - name: Build lavat for Alpine
+      - name: Build lavat (static binary)
         run: |
-          mkdir lavat-alpine
-          cp lavat.c lavat-alpine/
-          cd lavat-alpine
           gcc -static -o lavat lavat.c
 
-      - name: Upload Linux Alpine binary
+      - name: Upload Linux binary
         uses: actions/upload-artifact@v4
         with:
-          name: lavat-linux-alpine
-          path: lavat-alpine/lavat
+          name: lavat-linux
+          path: lavat
 
   build-windows:
     runs-on: windows-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install MinGW
-        run: choco install mingw --no-progress
+      - name: Install MSYS2 and dependencies
+        uses: msys2/setup-msys2@v2
+        with:
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-make
 
-      - name: Add MinGW to PATH (correct way)
+      - name: Build lavat.exe using MSYS2 MinGW64
+        shell: msys2 {0}
         run: |
-          echo "C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin" >> $env:GITHUB_PATH
-        shell: pwsh
-
-      - name: Build lavat.exe
-        run: gcc -o lavat.exe lavat.c
+          pacman -S --noconfirm base-devel
+          gcc -o lavat.exe lavat.c -lmingw32
 
       - name: Upload Windows binary
         uses: actions/upload-artifact@v4
         with:
-          name: lavat-windows-exe
+          name: lavat-windows
           path: lavat.exe
