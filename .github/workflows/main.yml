@@ -12,20 +12,22 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup MSVC environment
-        uses: microsoft/setup-msbuild@v1
+      - name: Install MinGW
+        run: choco install mingw
 
-      - name: Build with MSBuild
+      - name: Add MinGW to PATH
+        shell: powershell
+        run: echo "::add-path::C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin"
+
+      - name: Build Windows EXE with gcc
         run: |
-          # Assuming a Visual Studio solution or vcxproj is present,
-          # adjust this if you use a Makefile or different build system
-          msbuild /p:Configuration=Release /p:Platform=x64 lavat.sln
+          gcc -o lavat.exe lavat.c   # Adjust source files list if more than one
 
       - name: Upload Windows EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: lavat-windows-exe
-          path: path\to\built\lavat.exe  # Adjust to actual exe path
+          path: lavat.exe
 
   build-alpine:
     runs-on: ubuntu-latest
@@ -40,9 +42,7 @@ jobs:
 
       - name: Build static binary for Alpine
         run: |
-          CC=musl-gcc
-          CFLAGS="-static -O2"
-          $CC $CFLAGS -o lavat lavat.c   # Adjust source file names if needed
+          musl-gcc -static -o lavat lavat.c  # Adjust source files if needed
 
       - name: Upload Alpine binary artifact
         uses: actions/upload-artifact@v4
